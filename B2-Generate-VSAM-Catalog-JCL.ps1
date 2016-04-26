@@ -45,6 +45,7 @@ Function Main ()
                 
                 $NewASCIIFileName = "$ASCIIFileName.SEQ"
                 
+                # Renaming file with .SEQ  
                 Rename-Item "$ASCIIFilesPath$ASCIIFile" "$ASCIIFilesPath$NewASCIIFileName.DAT" -Verbose
                 
                 (Get-Content $CatalogJCL) | ForEach-Object {$_.Replace("$ASCIIFileName,", "$NewASCIIFileName,")} | Set-Content $CatalogJCL
