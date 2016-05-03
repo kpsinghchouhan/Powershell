@@ -7,7 +7,7 @@
 # after executing this script.
 #
 
-$ScriptNumber = "SE14"
+$ScriptNumber = "B2S1"
 
 Function Main ()
 {
@@ -45,17 +45,44 @@ Function Main ()
                 
                 $NewASCIIFileName = "$ASCIIFileName.SEQ"
                 
-                # Renaming file with .SEQ  
                 Rename-Item "$ASCIIFilesPath$ASCIIFile" "$ASCIIFilesPath$NewASCIIFileName.DAT" -Verbose
                 
                 (Get-Content $CatalogJCL) | ForEach-Object {$_.Replace("$ASCIIFileName,", "$NewASCIIFileName,")} | Set-Content $CatalogJCL
                 
                 $StepNumber = $StepNumber + 1
+                [String[]] $KeyDetails = Select-String -Path "$VSAMCtlPath$CtlName" -Pattern "KEYS" -SimpleMatch
+                
+                If ($KeyDetails.Length -GT 0)
+                {
+                    [String[]] $SplitText1 = $KeyDetails[0] -Split "KEYS\s*\("
+                    [String[]] $SplitText2 = $SplitText1[1] -Split "\s+"
+                    [String[]] $SplitText3 = $SplitText2[1] -Split "\)"
+                    
+                    $KeyLength = $SplitText2[0]
+                    $KeyStartPos = [String]([Int]$SplitText3[0] + 1)
+                    
+                    Add-Content $CatalogJCL "//STEPS$StepNumber EXEC PGM=SORT"
+                    Add-Content $CatalogJCL "//SORTLIB   DD DSN=SYS2.SORTLIB,DISP=SHR"
+                    Add-Content $CatalogJCL "//SYSOUT    DD SYSOUT=*"
+                    Add-Content $CatalogJCL "//SORTMSG   DD SYSOUT=*"
+                    Add-Content $CatalogJCL "//SYSUDUMP  DD SYSOUT=*"
+                    Add-Content $CatalogJCL "//SYSUDUMP  DD SYSOUT=*"
+                    Add-Content $CatalogJCL "//SYSUDUMP  DD SYSOUT=*"
+                    Add-Content $CatalogJCL "//SYSIN     DD *"
+                    Add-Content $CatalogJCL " SORT FIELDS=($KeyStartPos,$KeyLength,CH,A)"
+                    Add-Content $CatalogJCL "/*"
+                    Add-Content $CatalogJCL "//SORTIN    DD DSN=$NewASCIIFileName,"
+                    Add-Content $CatalogJCL "//             DISP=SHR"
+                    Add-Content $CatalogJCL "//SORTOUT   DD DSN=$NewASCIIFileName,"
+                    Add-Content $CatalogJCL "//             DISP=SHR"
+                    Add-Content $CatalogJCL "//*"                    
+                }
+
                 Add-Content $CatalogJCL "//STEPR$StepNumber EXEC PGM=IDCAMS"
                 Add-Content $CatalogJCL "//SYSOUT    DD SYSOUT=*"
                 Add-Content $CatalogJCL "//SYSPRINT  DD SYSOUT=*"
                 Add-Content $CatalogJCL "//DISKIN    DD DSN=$NewASCIIFileName,"
-                Add-Content $CatalogJCL "//          DISP=(OLD,DELETE,KEEP)"
+                Add-Content $CatalogJCL "//             DISP=(OLD,DELETE,KEEP)"
                 Add-Content $CatalogJCL "//SYSIN     DD *"
                 
                 [String[]] $CtlContents = Get-Content "$VSAMCtlPath$CtlName"
