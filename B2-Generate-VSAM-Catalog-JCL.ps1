@@ -54,12 +54,22 @@ Function Main ()
                 
                 If ($KeyDetails.Length -GT 0)
                 {
+                    $DCBLine = $(Select-String -Path $CatalogJCL -Pattern "$NewASCIIFileName," -SimpleMatch -Context 0,1).Context.DisplayPostContext 
+                    
                     [String[]] $SplitText1 = $KeyDetails[0] -Split "KEYS\s*\("
                     [String[]] $SplitText2 = $SplitText1[1] -Split "\s+"
                     [String[]] $SplitText3 = $SplitText2[1] -Split "\)"
                     
                     $KeyLength = $SplitText2[0]
-                    $KeyStartPos = [String]([Int]$SplitText3[0] + 1)
+                    
+                    If ($DCBLine.Match("RECFM=FB"))
+                    {
+                        $KeyStartPos = [String]([Int]$SplitText3[0] + 1)    
+                    }
+                    Else
+                    {
+                        $KeyStartPos = [String]([Int]$SplitText3[0] + 4)    
+                    }
                     
                     Add-Content $CatalogJCL "//STEPS$StepNumber EXEC PGM=SORT"
                     Add-Content $CatalogJCL "//SORTLIB   DD DSN=SYS2.SORTLIB,DISP=SHR"
